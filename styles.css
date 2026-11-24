@@ -18,13 +18,12 @@ a { color: var(--accent); }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
 /* ---------- header ---------- */
-.hero { padding: 44px 0 20px; }
-.eyebrow { margin: 0 0 8px; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
-h1 { margin: 0; font-size: clamp(40px, 7vw, 72px); line-height: .95; font-weight: 900; letter-spacing: -.035em; }
-.lede { max-width: 700px; margin: 14px 0 0; font-size: 17px; color: #3b3d43; }
+.hero { padding: 40px 0 24px; }
+h1 { margin: 0; font-size: clamp(28px, 4.6vw, 48px); line-height: 1.02; font-weight: 900; letter-spacing: -.03em; }
+.label { margin: 0 0 8px; font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
 
 /* ---------- team strip ---------- */
-.teams { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 8px 0 20px; }
+.teams { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 0 0 24px; }
 .team { display: grid; gap: 2px; text-align: left; padding: 10px 12px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--line); transition: background .4s, opacity .4s, color .4s, transform .25s var(--ease), box-shadow .25s var(--ease); }
 .team:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 8px 20px -12px rgba(0,0,0,.3); }
 .team:disabled { cursor: default; }
@@ -75,8 +74,8 @@ h1 { margin: 0; font-size: clamp(40px, 7vw, 72px); line-height: .95; font-weight
 
 /* ---------- tree ---------- */
 .treebox { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 16px 12px 4px; }
-.treehead { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 8px 10px; flex-wrap: wrap; }
-.treehead-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.treehead { display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin: 0 8px 10px; flex-wrap: wrap; }
+.treehead-label { font-size: 14px; font-weight: 700; color: var(--muted); }
 .seg { display: inline-flex; padding: 3px; background: var(--soft); border-radius: 999px; }
 .seg button { border: 0; background: transparent; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700; color: var(--muted); transition: background .25s var(--ease), color .25s, box-shadow .25s; }
 .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }

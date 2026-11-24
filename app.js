@@ -385,12 +385,12 @@ function sentence() {
     })(root);
     el.innerHTML = `Every path that sends ${nm(focusTeam)} to Indy: <span class="chance">${pct(pin)}</span>`
       + (pmaybe > 1e-9 ? ` <span class="muted">plus ${pct(pmaybe)} the league leaves unresolved.</span>` : "")
-      + ` <span class="muted">${count} end point${count === 1 ? "" : "s"}. Tap a branch to read it.</span>`;
+      + ` <span class="muted">${count} end point${count === 1 ? "" : "s"}. Tap any branch to filter possibilities.</span>`;
     return;
   }
   if (!n) {
     if (root.leaf) { el.innerHTML = `Decided: ${matchupHTML(root.result)}.`; return; }
-    el.innerHTML = `<span class="muted">Tap a branch to read it, or a team above to see its paths. Most likely right now:</span> ${topMatchups(root, 2)}`;
+    el.innerHTML = `<span class="muted">Tap any branch to filter possibilities. Most likely right now:</span> ${topMatchups(root, 2)}`;
     return;
   }
   const conds = orderIds.filter((id) => id in n.cond && !(id in picks)).map((id) => phrase(id, n.cond[id]));
