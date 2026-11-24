@@ -461,13 +461,13 @@ function renderResult() {
   const why = r.teams.map((t) => {
     const idx = new Set();
     root.outcomes.forEach((o) => matchedScenarios(o, t).forEach((i) => idx.add(i)));
-    return `<div class="why"><span class="whyc" style="background:${band(t)}"></span><div><b>${T(t).name} clinches</b>${[...idx].map((i) => `<p>${SCENARIOS[t][i].inferred ? "<em>Inferred.</em> " : ""}“${SCENARIOS[t][i].text}”</p>`).join("")}</div></div>`;
+    return `<div class="why"><span class="whyc" style="background:${band(t)}"></span><div><b>${T(t).name} clinches</b>${[...idx].map((i) => { const sc = SCENARIOS[t][i]; return sc.inferred ? `<p><em>Inferred.</em> ${sc.text}.</p><p class="whyx">${sc.why}</p>` : `<p>“${sc.text}”</p>`; }).join("")}</div></div>`;
   }).join("");
   el.hidden = false;
   el.innerHTML = `<p class="rk">${r.gap ? "Title game, mostly set" : "Title game set"}</p>
-    <h2>${matchupHTML(r)}</h2>
+    <h2>${r.teams.map((t) => `<b style="color:${T(t).ink || band(t)}"${T(t).ink ? ' class="ink"' : ""}>${T(t).name}</b>`).join(" vs. ")}</h2>
     ${r.gap ? `<p class="gapnote">${r.gap.note}</p>` : `<p class="rsub">Dec. 5 · Lucas Oil Stadium, Indianapolis · FOX</p>`}
-    <div class="whys"><p class="rk">Per the league</p>${why}</div>`;
+    <div class="whys"><p class="rk">${root.outcomes.some((o) => r.teams.some((t) => matchedScenarios(o, t).some((i) => SCENARIOS[t][i].inferred))) ? "Why" : "Per the league"}</p>${why}</div>`;
 }
 
 // ---------- state changes ----------

@@ -10,7 +10,11 @@ A one-page interactive decision tree built from the Big Ten's Nov. 23, 2026 clin
 ```
 npm run dev      # http://localhost:5173
 npm run check    # sanity-check scenario coverage
+npm run tiebreak # re-derive every combination from the tiebreaker rules (needs python3 + internet)
 ```
+
+## Data notes
+The league's clinch update names only one clinching team in 69 of the 1,024 final-week combinations. Those were resolved by applying the [Big Ten tiebreaker rules](https://bigten.org/sports/2026/11/10/FB_1110261447.aspx) to every conference result (from ESPN), and they're marked `inferred` in `data.js`. `scripts/tiebreak.py` implements the rules; it reproduces all 955 combinations the league spells out and agrees with all 1,024 shown on the site.
 
 ## Deploy
 Static site, no build. From this folder: `npx vercel` (or import the repo in Vercel with Framework Preset "Other" and no build command).

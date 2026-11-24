@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "check": "node scripts/check.mjs",
+    "tiebreak": "node scripts/export-outcomes.mjs | python3 scripts/tiebreak.py",
     "dev": "python3 -m http.server 5173"
   }
 }

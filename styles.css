@@ -119,6 +119,7 @@ h1 { margin: 0; font-size: clamp(40px, 7vw, 72px); line-height: .95; font-weight
 .result { margin-top: 16px; background: #111216; color: #fff; border-radius: 18px; padding: 24px; animation: rise .6s var(--ease); }
 .result h2 { margin: 4px 0 6px; font-size: clamp(26px, 4vw, 40px); font-weight: 900; letter-spacing: -.02em; }
 .result h2 b { filter: brightness(1.6) saturate(1.1); }
+.result h2 b.ink { filter: none; }
 .rk { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #8fd3ff; }
 .rsub, .gapnote { margin: 0; color: #c8c9cf; }
 .whys { margin-top: 18px; display: grid; gap: 10px; }
@@ -126,6 +127,7 @@ h1 { margin: 0; font-size: clamp(40px, 7vw, 72px); line-height: .95; font-weight
 .whyc { flex: none; width: 4px; border-radius: 2px; }
 .why b { font-size: 14px; }
 .why p { margin: 4px 0 0; color: #c8c9cf; font-size: 14px; }
+.why .whyx { color: #9a9ba3; font-size: 13px; }
 .why em { color: #8fd3ff; font-style: normal; font-weight: 700; }
 
 /* ---------- footer ---------- */

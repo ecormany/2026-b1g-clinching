@@ -56,7 +56,11 @@ export const SCENARIOS = {
     { c: ["IOWA", "IND", "ORE", "WIS", "!UCLA"], text: "Iowa win AND Indiana, Oregon and Wisconsin wins AND UCLA loss" },
     { c: ["IOWA", "!IND", "!ORE", "!UCLA"], text: "Iowa win AND Indiana, Oregon and UCLA losses" },
     { c: ["IOWA", "ILL", "IND", "MD", "MICH", "MSU", "WIS", "!ORE", "!UCLA", "SSA:IOWA"], inferred: true,
-      text: "Not listed by the league — implied by UCLA's final scenario: Iowa win AND Illinois, Indiana, Maryland, Michigan, Michigan State and Wisconsin wins AND Oregon and UCLA losses AND Iowa has a higher SportSource Analytics ranking than UCLA" },
+      text: "Iowa win AND Illinois, Indiana, Maryland, Michigan, Michigan State and Wisconsin wins AND Oregon and UCLA losses AND Iowa has a higher SportSource Analytics ranking than UCLA",
+      why: "Not listed by the league, but it's the other side of UCLA's final scenario." },
+    { c: ["IOWA", "IND", "UCLA", "!ORE"], inferred: true,
+      text: "Iowa win AND Indiana and UCLA wins AND Oregon loss",
+      why: "Not listed by the league; worked out from the tiebreaker rules. UCLA finishes first at 8-1, and Indiana and Iowa tie for second at 7-2. They didn't play each other and both went 5-2 against common opponents. If Wisconsin beats Minnesota, Iowa wins on record against common opponents in order of finish: both lost to Ohio State, but Iowa beat Washington and Indiana didn't. If Minnesota wins, those records stay even all the way down, and Iowa wins on its opponents' combined conference record (38-43, vs. no better than 36-45 for Indiana's)." },
   ],
   OSU: [
     { c: ["OSU", "MD", "RUT", "WIS", "!IND", "!IOWA", "!ORE", "!USC"], text: "Ohio State win AND Maryland, Rutgers and Wisconsin wins AND Indiana, Iowa, Oregon and USC losses" },
@@ -70,6 +74,9 @@ export const SCENARIOS = {
     { c: ["!ORE", "!IND", "!IOWA", "!OSU", "!USC", "!WIS"], text: "Oregon loss AND Indiana, Iowa, Ohio State, USC and Wisconsin losses" },
     { c: ["!ORE", "MSU", "OSU", "WIS", "!IND", "!IOWA", "!USC"], text: "Oregon loss AND Michigan State, Ohio State and Wisconsin win AND Indiana, Iowa and USC losses" },
     { c: ["!ORE", "WIS", "!IND", "!IOWA", "!OSU", "!USC"], text: "Oregon loss AND Wisconsin win AND Indiana, Iowa, Ohio State and USC losses" },
+    { c: ["!ORE", "OSU", "PSU", "RUT", "UCLA", "WIS", "!IND", "!IOWA"], inferred: true,
+      text: "Oregon loss AND Ohio State, Penn State, Rutgers, UCLA and Wisconsin wins AND Indiana and Iowa losses",
+      why: "Not listed by the league; worked out from the tiebreaker rules. UCLA finishes first at 8-1, and Indiana, Iowa, Oregon, Ohio State and Wisconsin tie for second at 6-3. Not all of them played each other and none beat all the others, and no opponent is common to all five, so it comes down to opponents' combined conference record. Oregon and Ohio State tie for best at 41-40, and Oregon beat Ohio State head to head." },
   ],
   UCLA: [
     { c: ["UCLA"], text: "UCLA win" },
@@ -88,11 +95,9 @@ export const SCENARIOS = {
   ],
 };
 
-// Outcome combinations the league's published scenarios do not resolve
-// (only one team is named as clinching). Shown in the tool as unresolved.
-export const GAPS = [
-  { c: ["IND", "IOWA", "!ORE", "UCLA"], known: ["UCLA"], candidates: ["IND", "IOWA"],
-    note: "UCLA wins and clinches, but no published scenario covers Indiana and Iowa both winning while Oregon loses and UCLA wins. The second spot goes to Indiana or Iowa on tiebreakers the league didn't spell out." },
-  { c: ["!IND", "!IOWA", "!ORE", "UCLA", "OSU", "WIS", "PSU", "RUT"], known: ["UCLA"], candidates: ["OSU", "ORE"],
-    note: "UCLA wins and clinches. Ohio State's scenario requires a Maryland win and Oregon's requires a Michigan State win, so with Penn State and Rutgers both winning, neither team's published scenario applies." },
-];
+// Outcome combinations the published scenarios leave unresolved (only one
+// clinching team named). Empty now: the league's text missed 68 outcomes, and
+// those were resolved with the full tiebreaker rules (see the `inferred`
+// scenarios above and scripts/tiebreak.py). The app still supports entries
+// here, shown as hatched "?" end points, in case a later update needs them.
+export const GAPS = [];
