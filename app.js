@@ -416,7 +416,12 @@ svg.on("click", (e) => {
 });
 
 // ---------- teams, games, result ----------
-function renderTeams() {
+// Team cards persist between renders so their bars, numbers and order can
+// animate: bars via CSS width transitions, numbers by counting, and position
+// changes with FLIP (measure, reorder, then slide from the old spot).
+const teamEls = new Map();
+const teamVal = new Map();
+function renderTeams(animate = true) {
   const pin = {}, pmaybe = {}, possible = new Set();
   CONTENDERS.forEach((t) => { pin[t] = 0; pmaybe[t] = 0; });
   (function walk(n) {
@@ -426,15 +431,64 @@ function renderTeams() {
   })(current.root);
   if (focusTeam && !possible.has(focusTeam)) focusTeam = null;
   const order = [...CONTENDERS].sort((a, b) => pin[b] - pin[a] || pmaybe[b] - pmaybe[a]);
-  $("teams").innerHTML = order.map((t) => {
+  const dur = animate && !reduceMotion ? DUR * slow : 0;
+  const box = $("teams");
+  const before = new Map();
+  if (dur) teamEls.forEach((el, t) => before.set(t, el.getBoundingClientRect()));
+
+  for (const t of order) {
+    let el = teamEls.get(t);
+    if (!el) {
+      el = document.createElement("button");
+      el.type = "button";
+      el.className = "team";
+      el.dataset.team = t;
+      el.style.cssText = `--c:${T(t).color};--i:${ink(t)}`;
+      el.innerHTML = `<span class="tname">${T(t).name}</span><span class="tval"><span class="num"></span><small></small></span><span class="tbar"><span></span></span>`;
+      teamEls.set(t, el);
+    }
+    box.appendChild(el); // moves it into sorted position
     const status = !possible.has(t) ? "out" : pin[t] > 1 - 1e-9 ? "in" : "alive";
-    const val = status === "in" ? "In" : status === "out" ? "Out" : pct(pin[t]);
-    return `<button type="button" class="team ${status}" data-team="${t}" ${status === "out" ? "disabled" : ""} aria-pressed="${focusTeam === t}" title="${status === "out" ? "" : `Highlight every path that sends ${T(t).name} to Indy`}" style="--c:${T(t).color};--i:${ink(t)}">
-      <span class="tname">${T(t).name}</span>
-      <span class="tval">${val}${status === "alive" && pmaybe[t] > 1e-6 ? `<small title="Chance of an outcome the league's text leaves unresolved">+${pct(pmaybe[t])}?</small>` : ""}</span>
-      <span class="tbar"><span style="width:${(pin[t] * 100).toFixed(1)}%"></span></span>
-    </button>`;
-  }).join("");
+    el.classList.remove("in", "out", "alive");
+    el.classList.add(status);
+    el.disabled = status === "out";
+    el.setAttribute("aria-pressed", focusTeam === t);
+    el.title = status === "out" ? "" : `Highlight every path that sends ${T(t).name} to Indy`;
+    const bar = el.querySelector(".tbar span"), w = `${(pin[t] * 100).toFixed(1)}%`;
+    bar.style.width = w;
+    // animated explicitly: moving the card in the DOM would cancel a CSS transition
+    if (dur && teamVal.has(t) && Math.abs(teamVal.get(t) - pin[t]) > 1e-9)
+      bar.animate([{ width: `${(teamVal.get(t) * 100).toFixed(1)}%` }, { width: w }], { duration: dur, easing: "cubic-bezier(.2, .8, .2, 1)" });
+    const small = el.querySelector(".tval small");
+    const maybe = status === "alive" && pmaybe[t] > 1e-6;
+    small.textContent = maybe ? `+${pct(pmaybe[t])}?` : "";
+    small.title = maybe ? "Chance of an outcome the league's text leaves unresolved" : "";
+    const final = status === "in" ? "In" : status === "out" ? "Out" : pct(pin[t]);
+    countTo(el, teamVal.has(t) ? teamVal.get(t) : pin[t], pin[t], final, dur);
+    teamVal.set(t, pin[t]);
+  }
+
+  if (dur) for (const [t, el] of teamEls) {
+    const a = before.get(t), b = el.getBoundingClientRect();
+    if (!a) continue;
+    const dx = a.left - b.left, dy = a.top - b.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+    el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }],
+      { duration: dur, easing: "cubic-bezier(.2, .8, .2, 1)" });
+  }
+}
+
+function countTo(el, from, to, final, dur) {
+  const node = el.querySelector(".num");
+  const id = (el._count = (el._count || 0) + 1);
+  if (!dur || Math.abs(from - to) < 1e-9) { node.textContent = final; return; }
+  const t0 = performance.now();
+  (function step(now) {
+    if (el._count !== id) return; // a newer change took over
+    const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    node.textContent = k < 1 ? pct(from + (to - from) * e) : final;
+    if (k < 1) requestAnimationFrame(step);
+  })(t0);
 }
 
 function renderGames() {
@@ -474,7 +528,7 @@ function renderResult() {
 let hlTimer;
 function renderAll(animate) {
   renderTree(animate);
-  renderTeams();
+  renderTeams(animate);
   renderGames();
   renderResult();
   clearTimeout(hlTimer);

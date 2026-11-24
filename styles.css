@@ -33,7 +33,7 @@ h1 { margin: 0; font-size: clamp(28px, 4.6vw, 48px); line-height: 1.02; font-wei
 .tval { font-size: 26px; font-weight: 900; letter-spacing: -.03em; color: var(--c); font-variant-numeric: tabular-nums; line-height: 1.1; transition: color .4s; }
 .tval small { font-size: 12px; font-weight: 700; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
 .tbar { height: 4px; border-radius: 4px; background: var(--soft); overflow: hidden; margin-top: 6px; }
-.tbar span { display: block; height: 100%; background: var(--c); transition: width .7s var(--ease); }
+.tbar span { display: block; height: 100%; background: var(--c); }
 .team.in { background: var(--c); border-color: var(--c); color: var(--i); }
 .team.in .tval { color: var(--i); text-transform: uppercase; }
 .team.in .tbar { background: rgba(255,255,255,.25); }
