@@ -23,20 +23,31 @@ export const TEAMS = {
   WASH: { name: "Washington",     short: "Washington",color: "#4B2E83", accent: "#B7A57A" },
 };
 
-// Each game: away @ home. `fav` / `spread` from ESPN lines (used only for optional odds estimate).
+// Each game: away @ home. `espn` / `ncaa` are the event ids in each live feed
+// (see live.js); `kick` is kickoff in UTC. `fav` / `spread` from ESPN lines
+// (pregame win chances).
 export const GAMES = [
-  { id: "NEB-IOWA", away: "NEB",  home: "IOWA", day: "Fri 11/27", time: "12:00 PM", tv: "CBS", fav: "IOWA", spread: 4.5 },
-  { id: "MINN-WIS", away: "MINN", home: "WIS",  day: "Fri 11/27", time: "7:30 PM",  tv: "NBC", fav: "WIS",  spread: 7.5 },
-  { id: "MICH-OSU", away: "MICH", home: "OSU",  day: "Sat 11/28", time: "12:00 PM", tv: "FOX", fav: "OSU",  spread: 10 },
-  { id: "ILL-NW",   away: "ILL",  home: "NW",   day: "Sat 11/28", time: "12:30 PM", tv: "BTN", fav: "NW",   spread: 3 },
-  { id: "USC-UCLA", away: "USC",  home: "UCLA", day: "Sat 11/28", time: "3:30 PM",  tv: "CBS", fav: "USC",  spread: 7 },
-  { id: "PSU-MD",   away: "PSU",  home: "MD",   day: "Sat 11/28", time: "3:30 PM",  tv: "FS1", fav: "PSU",  spread: 7 },
-  { id: "MSU-RUT",  away: "MSU",  home: "RUT",  day: "Sat 11/28", time: "4:15 PM",  tv: "BTN", fav: "MSU",  spread: 3.5 },
-  { id: "PUR-IND",  away: "PUR",  home: "IND",  day: "Sat 11/28", time: "7:00 PM",  tv: "FS1", fav: "IND",  spread: 22.5 },
-  { id: "WASH-ORE", away: "WASH", home: "ORE",  day: "Sat 11/28", time: "7:30 PM",  tv: "NBC", fav: "ORE",  spread: 14 },
+  { id: "NEB-IOWA", espn: "401858536", ncaa: "6603611", kick: "2026-11-27T17:00Z", away: "NEB",  home: "IOWA", day: "Fri 11/27", time: "12:00 PM", tv: "CBS", fav: "IOWA", spread: 4.5 },
+  { id: "MINN-WIS", espn: "401858544", ncaa: "6603692", kick: "2026-11-28T00:30Z", away: "MINN", home: "WIS",  day: "Fri 11/27", time: "7:30 PM",  tv: "NBC", fav: "WIS",  spread: 7.5 },
+  { id: "MICH-OSU", espn: "401858540", ncaa: "6604308", kick: "2026-11-28T17:00Z", away: "MICH", home: "OSU",  day: "Sat 11/28", time: "12:00 PM", tv: "FOX", fav: "OSU",  spread: 10 },
+  { id: "ILL-NW", espn: "401858537", ncaa: "6604091", kick: "2026-11-28T17:30Z",   away: "ILL",  home: "NW",   day: "Sat 11/28", time: "12:30 PM", tv: "BTN", fav: "NW",   spread: 3 },
+  { id: "USC-UCLA", espn: "401858543", ncaa: "6604125", kick: "2026-11-28T20:30Z", away: "USC",  home: "UCLA", day: "Sat 11/28", time: "3:30 PM",  tv: "CBS", fav: "USC",  spread: 7 },
+  { id: "PSU-MD", espn: "401858539", ncaa: "6603766", kick: "2026-11-28T20:30Z",   away: "PSU",  home: "MD",   day: "Sat 11/28", time: "3:30 PM",  tv: "FS1", fav: "PSU",  spread: 7 },
+  { id: "MSU-RUT", espn: "401858542", ncaa: "6604036", kick: "2026-11-28T21:15Z",  away: "MSU",  home: "RUT",  day: "Sat 11/28", time: "4:15 PM",  tv: "BTN", fav: "MSU",  spread: 3.5 },
+  { id: "PUR-IND", espn: "401858538", ncaa: "6603955", kick: "2026-11-29T00:00Z",  away: "PUR",  home: "IND",  day: "Sat 11/28", time: "7:00 PM",  tv: "FS1", fav: "IND",  spread: 22.5 },
+  { id: "WASH-ORE", espn: "401858541", ncaa: "6640755", kick: "2026-11-29T00:30Z", away: "WASH", home: "ORE",  day: "Sat 11/28", time: "7:30 PM",  tv: "NBC", fav: "ORE",  spread: 14 },
 ];
 
-// Non-game variable referenced by the final UCLA scenario.
+// Feed abbreviations that differ from ours (ESPN), and NCAA team slugs.
+export const ESPN_ABBR = { NU: "NW", RUTG: "RUT", IU: "IND" };
+export const NCAA_SEO = {
+  nebraska: "NEB", iowa: "IOWA", minnesota: "MINN", wisconsin: "WIS", michigan: "MICH", "ohio-st": "OSU",
+  illinois: "ILL", northwestern: "NW", "southern-california": "USC", ucla: "UCLA", "penn-st": "PSU", maryland: "MD",
+  "michigan-st": "MSU", rutgers: "RUT", purdue: "PUR", indiana: "IND", washington: "WASH", oregon: "ORE",
+};
+
+// Non-game variable referenced by the final UCLA scenario. No feed carries it,
+// so it stays a manual pick; update SCENARIOS by hand if the league publishes it.
 export const SSA = { id: "SSA", label: "SportSource Analytics ranking", options: { UCLA: "UCLA ahead of Iowa", IOWA: "Iowa ahead of UCLA" } };
 
 // Scenario literals: "TEAM" = team wins, "!TEAM" = team loses,

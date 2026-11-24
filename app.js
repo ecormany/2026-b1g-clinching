@@ -1,6 +1,7 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
-import { TEAMS, SCENARIOS } from "./data.js";
-import { VARS, CONTENDERS, ORDERS, condKey, weight, buildFlow, matchedScenarios } from "./engine.js";
+import { TEAMS, SCENARIOS, GAMES } from "./data.js";
+import { VARS, CONTENDERS, ORDERS, VAR_PROB, valueOf, condKey, weight, buildFlow, matchedScenarios, liveProbs, chances, filterOutcomes, RESULT } from "./engine.js";
+import { startLive } from "./live.js";
 
 // ---------- constants ----------
 const ROW = 62;          // vertical distance between games
@@ -20,8 +21,13 @@ let orderIds = ORDERS[orderName].map((i) => VARS[i].id);
 const $ = (id) => document.getElementById(id);
 
 // ---------- state ----------
-let picks = {};
-let prevPicks = {};
+let picks = {};           // the user's clicks
+let prevPicks = {};       // the picks (user + finals) the tree was last drawn with
+let slate = null;         // live feed: { gameId: { state, winner, scores, clock, pHome, ... } }
+let feed = null;          // { source, updated } of the last good fetch
+let feedErr = null;       // last fetch error, cleared on success
+let viewPref = null;      // "live" | "pre" when chosen (or in the link); null = automatic
+let standing = null;      // live: { cond, leaves } for "if every current leader wins"
 let slow = 1;
 let current = null;      // layout of the tree on screen
 let selected = null;      // clicked branch (node)
@@ -36,6 +42,29 @@ const gRows = svg.append("g").attr("class", "rows");
 const gBands = svg.append("g").attr("class", "bands");
 const gRibbons = svg.append("g").attr("class", "ribbons");
 const gLeaves = svg.append("g").attr("class", "leaves");
+
+// ---------- live view ----------
+// "As it stands" uses finals from the feed as fixed picks (the user can't
+// override them) and live win chances; "Before kickoff" is the full slate.
+const STARTED = (s) => s && s.state !== "pre";
+const anyStarted = () => !!slate && Object.values(slate).some(STARTED);
+const view = () => viewPref || (anyStarted() ? "live" : "pre");
+const isLive = () => view() === "live" && anyStarted();
+function results() {
+  const r = {};
+  if (slate) for (const g of Object.values(slate)) if (g.state === "post" && g.winner) r[g.id] = g.winner;
+  return r;
+}
+const active = () => (isLive() ? { ...picks, ...results() } : picks);
+const probs = () => (isLive() ? liveProbs(slate) : VAR_PROB);
+const leader = (s) => (s?.state !== "in" || s.away.score === s.home.score ? null : s.away.score > s.home.score ? s.away.code : s.home.code);
+function gameStatus(s, narrow) {
+  if (s.state === "post") return s.period > 4 ? "Final/OT" : "Final";
+  if (s.status === "STATUS_HALFTIME") return narrow ? "Half" : "Halftime";
+  const q = s.period > 4 ? (s.period === 5 ? "OT" : `${s.period - 4}OT`) : `Q${s.period}`;
+  if (s.status === "STATUS_END_PERIOD") return `End ${q}`;
+  return `${q} ${s.clock}`;
+}
 
 // ---------- helpers ----------
 function pct(x) {
@@ -68,9 +97,10 @@ function layout(root, width) {
   const gutter = narrow ? 76 : 150;
   const pad = 10;
   const nodes = [], leaves = [];
-  const total = d3.sum(root.outcomes, (o) => weight(o, true));
+  const P = probs();
+  const total = d3.sum(root.outcomes, (o) => weight(o, P));
   (function walk(n, depth) {
-    n.p = d3.sum(n.outcomes, (o) => weight(o, true)) / total;
+    n.p = d3.sum(n.outcomes, (o) => weight(o, P)) / total;
     n.depth = depth;
     nodes.push(n);
     if (n.leaf) leaves.push(n); else n.children.forEach((c) => walk(c, depth + 1));
@@ -142,10 +172,10 @@ function bandPath(g) {
 // Find where a node "was" in the previous render, so it can morph rather than pop.
 function previousKey(n, oldKeys) {
   if (oldKeys.has(n.key)) return n.key;
-  const c = { ...n.cond };
-  for (const k of Object.keys(picks)) if (!(k in prevPicks)) delete c[k];
+  const c = { ...n.cond }, now = active();
+  for (const k of Object.keys(now)) if (!(k in prevPicks)) delete c[k];
   for (const k of Object.keys(prevPicks)) {
-    if (k in picks) continue;
+    if (k in now) continue;
     if (k in c && c[k] !== prevPicks[k]) return null;
     c[k] = prevPicks[k];
   }
@@ -154,11 +184,19 @@ function previousKey(n, oldKeys) {
 }
 
 // ---------- render tree ----------
-function renderTree(animate = true) {
+function renderTree(animate = true, keep = false) {
   const width = $("tree").parentElement.clientWidth;
-  const L = layout(buildFlow(picks, ORDERS[orderName]), Math.max(width, 300));
+  const L = layout(buildFlow(active(), ORDERS[orderName]), Math.max(width, 300));
+  const keepKey = keep && selected?.key;
   current = L;
-  selected = null;
+  selected = keepKey ? L.nodes.find((n) => n.key === keepKey) || null : null;
+  standing = null;
+  if (isLive()) { // end points still reachable if every current leader wins
+    const cond = {};
+    for (const [id, g] of Object.entries(slate)) { const w = leader(g); if (w && L.rows.includes(id)) cond[id] = w; }
+    const ok = (o) => Object.entries(cond).every(([k, v]) => valueOf(o, k) === v);
+    if (Object.keys(cond).length && !L.root.leaf) standing = { cond, ok, leaves: new Set(L.leaves.filter((l) => l.outcomes.some(ok))) };
+  }
   const dur = animate && !reduceMotion ? DUR * slow : 0;
   const t = svg.transition().duration(dur).ease(d3.easeCubicInOut);
 
@@ -222,7 +260,7 @@ function renderTree(animate = true) {
   placeLabels(L, lAll);
   lAll.transition(t).delay(dur ? dur * 0.25 : 0).style("opacity", 1).attr("transform", (d) => `translate(${d.x},${d.y})`);
 
-  prevPicks = { ...picks };
+  prevPicks = { ...active() };
 }
 
 function rowLabel(id, narrow) {
@@ -236,6 +274,10 @@ function rowLabel(id, narrow) {
 function rowSub(id, narrow) {
   const v = varById[id];
   if (v.kind === "ssa") return narrow ? "tiebreak" : "SportSource tiebreaker";
+  const s = isLive() && slate[id];
+  if (s?.state === "in") return narrow
+    ? `${s.away.score}–${s.home.score} · ${gameStatus(s, true)}`
+    : `${v.game.away} ${s.away.score}, ${v.game.home} ${s.home.score} · ${gameStatus(s)} · ${v.game.tv}`;
   return narrow ? `${v.game.day.split(" ")[0]} ${v.game.time.replace(":00", "").replace(" ", "")}` : `${v.game.day} · ${v.game.time} · ${v.game.tv}`;
 }
 
@@ -338,9 +380,13 @@ function applyHighlight() {
       return hit;
     })(current.root);
   }
-  const ribbons = !selected && focusTeam;
-  gBands.selectAll("path.band").classed("dim", (d) => !!on && !on.has(d.key) && !ribbons).classed("under", !!ribbons).classed("hot", (d) => d === selected);
-  drawRibbons(ribbons ? focusTeam : null);
+  // Ribbons: a focused team's paths, or else (live) the "if leads hold" branch.
+  let pred = null;
+  if (!selected && focusTeam) pred = (l) => (l.result.teams.includes(focusTeam) ? "in" : l.result.gap?.candidates.includes(focusTeam) ? "maybe" : null);
+  else if (!selected && standing) pred = (l) => (standing.leaves.has(l) ? "in" : null);
+  const ribbons = !!pred;
+  gBands.selectAll("path.band").classed("dim", (d) => !!on && !on.has(d.key) && !ribbons).classed("under", ribbons).classed("hot", (d) => d === selected);
+  drawRibbons(pred);
   gLeaves.selectAll("g.leaf").classed("dim", (d) => !!on && !on.has(d.key)).classed("focus", (d) => d === selected);
   gLeaves.selectAll("g.leaf").filter((d) => d === selected).raise();
   document.querySelectorAll(".team[data-team]").forEach((el) => el.classList.toggle("focused", el.dataset.team === focusTeam));
@@ -349,13 +395,13 @@ function applyHighlight() {
 }
 // A team's share of each band: the slices belonging to its end points, which
 // tile the band exactly because bands are partitioned in end-point order.
-function drawRibbons(team) {
+function drawRibbons(pred) {
   const data = [];
-  if (team) for (const n of current.nodes) {
+  if (pred) for (const n of current.nodes) {
     let o = 0, run = null;
     const flush = () => { if (run) data.push(run); run = null; };
     for (const l of n.leafList) {
-      const kind = l.result.teams.includes(team) ? "in" : l.result.gap?.candidates.includes(team) ? "maybe" : null;
+      const kind = pred(l);
       if (kind && run && run.kind === kind) run.w += l.w;
       else { flush(); if (kind) run = { n, kind, o, w: l.w }; }
       o += l.w;
@@ -390,11 +436,30 @@ function sentence() {
   }
   if (!n) {
     if (root.leaf) { el.innerHTML = `Decided: ${matchupHTML(root.result)}.`; return; }
+    if (standing) {
+      const P = probs(), m = new Map();
+      let tot = 0;
+      for (const o of root.outcomes.filter(standing.ok)) {
+        const w = weight(o, P), r = RESULT[o];
+        tot += w;
+        const e = m.get(r.key) || { r, p: 0 };
+        e.p += w; m.set(r.key, e);
+      }
+      const list = [...m.values()].sort((a, b) => b.p - a.p);
+      const leads = listJoin(Object.values(standing.cond).map((t) => nm(t)));
+      el.innerHTML = list.length === 1
+        ? `If ${leads} hold${Object.keys(standing.cond).length > 1 ? "" : "s"} on, it's ${matchupHTML(list[0].r)}.`
+        : `If ${leads} hold${Object.keys(standing.cond).length > 1 ? "" : "s"} on, it's still open: `
+          + list.slice(0, 3).map((e) => `${matchupHTML(e.r)} <span class="chance">${pct(e.p / tot)}</span>`).join("<span class='sep'>·</span>")
+          + (list.length > 3 ? ` <span class="muted">+${list.length - 3} more</span>` : "");
+      return;
+    }
     el.innerHTML = `<span class="muted">Tap any branch to filter possibilities. Most likely right now:</span> ${topMatchups(root, 2)}`;
     return;
   }
-  const conds = orderIds.filter((id) => id in n.cond && !(id in picks)).map((id) => phrase(id, n.cond[id]));
-  const lead = conds.length ? `If ${listJoin(conds)}` : Object.keys(picks).length ? "With your picks" : "Before any games are played";
+  const fixed = active();
+  const conds = orderIds.filter((id) => id in n.cond && !(id in fixed)).map((id) => phrase(id, n.cond[id]));
+  const lead = conds.length ? `If ${listJoin(conds)}` : Object.keys(picks).length ? "With your picks" : isLive() ? "As it stands" : "Before any games are played";
   const lock = conds.length ? ` <button type="button" class="lockin" id="lockin" style="--c:${n.g.color}"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 3h12l-4.6 5.4V13l-2.8-1.4V8.4z" fill="currentColor"/></svg>Show only this branch</button>` : "";
   el.innerHTML = n.leaf
     ? `${lead}, it's ${matchupHTML(n.result)}. <span class="chance">${pct(n.p)}</span>${lock}`
@@ -431,6 +496,9 @@ function renderTeams(animate = true) {
   })(current.root);
   if (focusTeam && !possible.has(focusTeam)) focusTeam = null;
   const order = [...CONTENDERS].sort((a, b) => pin[b] - pin[a] || pmaybe[b] - pmaybe[a]);
+  // Baseline for ▲/▼: pregame lines with the user's picks, minus games now final.
+  const res = results();
+  const base = isLive() ? chances(Object.fromEntries(Object.entries(picks).filter(([k]) => !(k in res)))) : null;
   const dur = animate && !reduceMotion ? DUR * slow : 0;
   const box = $("teams");
   const before = new Map();
@@ -444,7 +512,7 @@ function renderTeams(animate = true) {
       el.className = "team";
       el.dataset.team = t;
       el.style.cssText = `--c:${T(t).color};--i:${ink(t)}`;
-      el.innerHTML = `<span class="tname">${T(t).name}</span><span class="tval"><span class="num"></span><small></small></span><span class="tbar"><span></span></span>`;
+      el.innerHTML = `<span class="tname">${T(t).name}</span><span class="tval"><span class="num"></span><small></small><i class="tdelta"></i></span><span class="tbar"><span></span></span>`;
       teamEls.set(t, el);
     }
     box.appendChild(el); // moves it into sorted position
@@ -465,6 +533,10 @@ function renderTeams(animate = true) {
     small.title = maybe ? "Chance of an outcome the league's text leaves unresolved" : "";
     const final = status === "in" ? "In" : status === "out" ? "Out" : pct(pin[t]);
     countTo(el, teamVal.has(t) ? teamVal.get(t) : pin[t], pin[t], final, dur);
+    const dEl = el.querySelector(".tdelta"), d = base ? Math.round((pin[t] - base[t]) * 100) : 0;
+    dEl.textContent = status === "alive" && d ? `${d > 0 ? "▲" : "▼"}${Math.abs(d)}` : "";
+    dEl.className = "tdelta " + (d > 0 ? "up" : "down");
+    dEl.title = d ? "Change since kickoff (with your picks)" : "";
     teamVal.set(t, pin[t]);
   }
 
@@ -492,22 +564,59 @@ function countTo(el, from, to, final, dur) {
 }
 
 function renderGames() {
-  const live = new Set(current.rows);
+  const rowsNow = new Set(current.rows);
+  const liveView = isLive(), fixed = active();
   $("games").innerHTML = orderIds.map((id) => {
     const v = varById[id];
-    const picked = picks[id];
-    const idle = !picked && !live.has(id);
-    const meta = v.kind === "ssa" ? "Tiebreaker" : `${v.game.day.split(" ")[0]} ${v.game.time} · ${v.game.tv}`;
+    const s = liveView && v.kind === "game" ? slate[id] : null;
+    const final = s?.state === "post" ? s.winner : null;
+    const on = s?.state === "in" ? s : null;
+    const picked = fixed[id];
+    const overridden = final && picks[id] && picks[id] !== final;
+    const idle = !picked && !rowsNow.has(id);
+    const lead = leader(on);
+    let meta = v.kind === "ssa" ? "Tiebreaker" : `${v.game.day.split(" ")[0]} ${v.game.time} · ${v.game.tv}`;
+    if (s && s.state !== "pre") meta = `<span class="gstat ${on ? "now" : ""}">${gameStatus(s)}</span> · ${v.game.tv}`;
     const btns = v.options.map((t, i) => {
       // full name, plus a short code swapped in on phones (see .opt .abbr)
       const label = v.kind === "ssa"
         ? `<span class="full">${T(t).short} higher</span><span class="abbr">${t} ↑</span>`
         : `<span class="full">${T(t).short}</span><span class="abbr">${t}</span>`;
-      const fav = v.kind === "game" && v.game.fav === t ? `<small>−${v.game.spread}</small>` : "";
-      return `${i ? `<span class="at">${v.kind === "ssa" ? "or" : "@"}</span>` : ""}<button type="button" class="opt ${picked === t ? "on" : ""} ${picked && picked !== t ? "off" : ""}" data-var="${id}" data-val="${t}" style="--c:${band(t)};--i:${ink(t)}">${label}${fav}</button>`;
+      const side = s && (t === v.game.home ? s.home : s.away);
+      const ball = on && on.possession === t ? `<i class="ball" title="Has the ball"></i>` : "";
+      const sub = s && s.state !== "pre"
+        ? `<small class="sc">${side.score}${ball}</small>`
+        : v.kind === "game" && v.game.fav === t ? `<small>−${v.game.spread}</small>` : "";
+      const cls = ["opt", picked === t && "on", picked && picked !== t && "off", lead === t && "lead"].filter(Boolean).join(" ");
+      return `${i ? `<span class="at">${v.kind === "ssa" ? "or" : "@"}</span>` : ""}<button type="button" class="${cls}" data-var="${id}" data-val="${t}" style="--c:${band(t)};--i:${ink(t)}"${final ? " disabled" : ""}>${label}${sub}</button>`;
     }).join("");
-    return `<div class="game ${idle ? "idle" : ""} ${picked ? "picked" : ""}"><div class="gmeta">${meta}${idle ? " · <em>doesn't matter now</em>" : ""}</div><div class="gopts">${btns}</div></div>`;
+    const note = overridden ? ` · <em>your pick (${picks[id]}) overridden</em>` : idle ? " · <em>doesn't matter now</em>" : "";
+    return `<div class="game ${idle ? "idle" : ""} ${picked ? "picked" : ""} ${final ? "final" : ""} ${on ? "live" : ""}"><div class="gmeta">${meta}${note}</div><div class="gopts">${btns}</div></div>`;
   }).join("");
+}
+
+// The strip above the team cards: view toggle, feed status, freshness.
+function renderLiveBar() {
+  const el = $("livebar");
+  const started = anyStarted();
+  const failing = feedErr && Date.now() > Date.parse(GAMES[0].kick);
+  el.hidden = !started && !failing;
+  if (el.hidden) return;
+  const all = slate ? Object.values(slate) : [];
+  const nIn = all.filter((s) => s.state === "in").length, nPost = all.filter((s) => s.state === "post").length;
+  const stale = feed && nIn && Date.now() - feed.updated > 3 * 60_000;
+  const time = feed ? new Date(feed.updated).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+  let status;
+  if (!started) status = `<span class="warn">Live scores unavailable right now.</span> Picks still work.`;
+  else if (isLive()) status = `${nIn ? `<span class="dot"></span><b>${nIn} live</b> · ` : ""}${nPost} final · ${9 - nIn - nPost} to come`
+    + ` <span class="muted">· Updated ${time}${feed.source.startsWith("NCAA") ? " (NCAA feed)" : ""}</span>`
+    + (stale ? ` <span class="warn">Scores may be out of date.</span>` : "")
+    + (feedErr && !stale ? ` <span class="warn">Couldn't refresh; retrying.</span>` : "");
+  else status = `<span class="muted">The full slate, as if no games had been played. ${nPost} final, ${nIn} live.</span>`;
+  el.innerHTML = `<div class="seg" role="group" aria-label="View">
+      <button type="button" data-view="live" aria-pressed="${view() === "live"}"${started ? "" : " disabled"}>As it stands</button>
+      <button type="button" data-view="pre" aria-pressed="${view() === "pre"}">Before kickoff</button>
+    </div><p class="livestat">${status}</p>`;
 }
 
 function renderResult() {
@@ -521,7 +630,8 @@ function renderResult() {
     return `<div class="why"><span class="whyc" style="background:${band(t)}"></span><div><b>${T(t).name} clinches</b>${[...idx].map((i) => { const sc = SCENARIOS[t][i]; return sc.inferred ? `<p><em>Inferred.</em> ${sc.text}.</p><p class="whyx">${sc.why}</p>` : `<p>“${sc.text}”</p>`; }).join("")}</div></div>`;
   }).join("");
   el.hidden = false;
-  el.innerHTML = `<p class="rk">${r.gap ? "Title game, mostly set" : "Title game set"}</p>
+  const official = isLive() && new Set(filterOutcomes(results()).map((o) => RESULT[o].key)).size === 1;
+  el.innerHTML = `<p class="rk">${r.gap ? "Title game, mostly set" : official ? "It's official: title game set" : "Title game set"}</p>
     <h2>${r.teams.map((t) => `<b style="color:${T(t).ink || band(t)}"${T(t).ink ? ' class="ink"' : ""}>${T(t).name}</b>`).join(" vs. ")}</h2>
     ${r.gap ? `<p class="gapnote">${r.gap.note}</p>` : `<p class="rsub">Dec. 5 · Lucas Oil Stadium, Indianapolis · FOX</p>`}
     <div class="whys"><p class="rk">${root.outcomes.some((o) => r.teams.some((t) => matchedScenarios(o, t).some((i) => SCENARIOS[t][i].inferred))) ? "Why" : "Per the league"}</p>${why}</div>`;
@@ -529,13 +639,14 @@ function renderResult() {
 
 // ---------- state changes ----------
 let hlTimer;
-function renderAll(animate) {
-  renderTree(animate);
+function renderAll(animate, keep = false) {
+  renderTree(animate, keep);
   renderTeams(animate);
   renderGames();
   renderResult();
+  renderLiveBar();
   clearTimeout(hlTimer);
-  if (animate && !reduceMotion && focusTeam) {
+  if (animate && !reduceMotion && (focusTeam || standing)) { // ribbons follow the bands once they settle
     gRibbons.selectAll("path").remove();
     gBands.selectAll("path.band").classed("under", false);
     sentence();
@@ -568,7 +679,9 @@ document.addEventListener("click", (e) => {
   }
   if (e.target.closest("#lockin") && selected) {
     slow = e.altKey ? 6 : 1;
-    return setPicks({ ...picks, ...selected.cond });
+    const res = isLive() ? results() : {};
+    const add = Object.fromEntries(Object.entries(selected.cond).filter(([k]) => !(k in res)));
+    return setPicks({ ...picks, ...add });
   }
   const ord = e.target.closest("[data-order]");
   if (ord) {
@@ -578,6 +691,15 @@ document.addEventListener("click", (e) => {
     writeHash();
     renderAll(true);
     slow = 1;
+    return;
+  }
+  const vb = e.target.closest("[data-view]");
+  if (vb && !vb.disabled) {
+    if (vb.dataset.view === view()) return;
+    viewPref = vb.dataset.view;
+    selected = null;
+    writeHash();
+    renderAll(true);
     return;
   }
   if (e.target.closest("#reset")) { slow = e.altKey ? 6 : 1; return setPicks({}); }
@@ -610,11 +732,33 @@ function readHash() {
 }
 function writeHash() {
   const s = orderIds.filter((k) => k in picks).map((k) => `${k}:${picks[k]}`).join(",");
-  const parts = [s && `p=${s}`, orderName !== "decisive" && `o=${orderName}`].filter(Boolean);
+  const parts = [s && `p=${s}`, orderName !== "decisive" && `o=${orderName}`, viewPref && `v=${viewPref}`].filter(Boolean);
   history.replaceState(null, "", parts.length ? `#${parts.join("&")}` : location.pathname + location.search);
 }
 
 setOrder((location.hash.match(/o=(\w+)/) || [])[1]);
+viewPref = ({ live: "live", pre: "pre" })[(location.hash.match(/v=(\w+)/) || [])[1]] || null;
 picks = readHash();
 prevPicks = { ...picks };
 renderAll(false);
+
+// Live scores: redraw only when something in the feed actually changed.
+let slateSig = "";
+startLive({
+  onData(d) {
+    feed = { source: d.source, updated: d.updated };
+    feedErr = null;
+    const sig = JSON.stringify(d.slate);
+    if (sig === slateSig) return renderLiveBar();
+    const first = !slateSig;
+    slateSig = sig;
+    slate = d.slate;
+    renderAll(!first, true);
+  },
+  onError(err) {
+    feedErr = err;
+    console.warn("Live scores:", err);
+    renderLiveBar();
+  },
+});
+setInterval(renderLiveBar, 30_000); // keeps "may be out of date" honest

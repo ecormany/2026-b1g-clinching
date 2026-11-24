@@ -51,7 +51,7 @@ export const RESULT = ALL_OUTCOMES.map(resolve);
 export const resultKey = (o) => RESULT[o].key;
 
 // ---- Probability (optional) from point spreads: P(fav) ≈ Φ(spread / 13.5)
-function phi(x) { // standard normal CDF
+export function phi(x) { // standard normal CDF
   const t = 1 / (1 + 0.2316419 * Math.abs(x));
   const d = 0.3989423 * Math.exp((-x * x) / 2);
   const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
@@ -62,11 +62,37 @@ export const VAR_PROB = VARS.map((v) => {
   const pf = phi(v.game.spread / 13.5);
   return v.options.map((t) => (t === v.game.fav ? pf : 1 - pf));
 });
-export function weight(outcome, useOdds) {
-  if (!useOdds) return 1;
+// `probs` is one [p(option 0), p(option 1)] pair per VARS entry; pass
+// liveProbs() to use in-game win chances instead of pregame lines.
+export function weight(outcome, probs = VAR_PROB) {
   let w = 1;
-  for (let i = 0; i < VARS.length; i++) w *= VAR_PROB[i][(outcome >> i) & 1];
+  for (let i = 0; i < VARS.length; i++) w *= probs[i][(outcome >> i) & 1];
   return w;
+}
+
+// Pregame chances, with in-progress games replaced by their live chance
+// (pHome = chance the home team wins). Clamped so no live branch vanishes
+// before the game is actually over.
+export function liveProbs(slate) {
+  return VARS.map((v, i) => {
+    const s = v.kind === "game" && slate?.[v.id];
+    if (!s || s.state !== "in" || s.pHome == null) return VAR_PROB[i];
+    const ph = Math.min(0.995, Math.max(0.005, s.pHome));
+    return v.options.map((t) => (t === v.game.home ? ph : 1 - ph));
+  });
+}
+
+// Chance each contender reaches the title game, given fixed picks.
+export function chances(picks, probs = VAR_PROB) {
+  const out = Object.fromEntries(CONTENDERS.map((t) => [t, 0]));
+  let total = 0;
+  for (const o of filterOutcomes(picks)) {
+    const w = weight(o, probs);
+    total += w;
+    RESULT[o].teams.forEach((t) => (out[t] += w));
+  }
+  for (const t of CONTENDERS) out[t] /= total || 1;
+  return out;
 }
 
 // Filter outcomes by fixed picks {varId: value}.
