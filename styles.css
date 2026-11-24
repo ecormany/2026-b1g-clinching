@@ -75,6 +75,12 @@ h1 { margin: 0; font-size: clamp(40px, 7vw, 72px); line-height: .95; font-weight
 
 /* ---------- tree ---------- */
 .treebox { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 16px 12px 4px; }
+.treehead { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 8px 10px; flex-wrap: wrap; }
+.treehead-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; padding: 3px; background: var(--soft); border-radius: 999px; }
+.seg button { border: 0; background: transparent; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700; color: var(--muted); transition: background .25s var(--ease), color .25s, box-shadow .25s; }
+.seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.seg button:not([aria-pressed="true"]):hover { color: var(--ink); }
 .sentence { min-height: 48px; margin: 0 8px 6px; font-size: 17px; line-height: 1.4; font-weight: 500; }
 .sentence .muted, .muted { color: var(--muted); font-weight: 500; }
 .sentence b { font-weight: 800; }

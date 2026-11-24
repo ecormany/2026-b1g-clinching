@@ -1,6 +1,6 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { TEAMS, SCENARIOS } from "./data.js";
-import { VARS, CONTENDERS, ORDER, weight, buildFlow, matchedScenarios } from "./engine.js";
+import { VARS, CONTENDERS, ORDERS, condKey, weight, buildFlow, matchedScenarios } from "./engine.js";
 
 // ---------- constants ----------
 const ROW = 62;          // vertical distance between games
@@ -15,7 +15,8 @@ const T = (t) => TEAMS[t];
 const band = (t) => T(t).band || T(t).color;
 const ink = (t) => T(t).ink || "#fff";
 const varById = Object.fromEntries(VARS.map((v) => [v.id, v]));
-const orderIds = ORDER.map((i) => VARS[i].id);
+let orderName = "decisive";   // "decisive" | "time"
+let orderIds = ORDERS[orderName].map((i) => VARS[i].id);
 const $ = (id) => document.getElementById(id);
 
 // ---------- state ----------
@@ -47,9 +48,6 @@ function pct(x) {
 }
 const nm = (t) => `<b style="color:${band(t)}">${T(t).name}</b>`;
 function listJoin(a) { return a.length <= 1 ? a.join("") : a.slice(0, -1).join(", ") + (a.length > 2 ? "," : "") + " and " + a.at(-1); }
-function condKey(cond) {
-  return orderIds.filter((id) => id in cond).map((id) => `${id}:${cond[id]}`).join("|") || "root";
-}
 function matchupHTML(r) {
   if (r.gap) return `${nm(r.teams[0])} vs. ${r.gap.candidates.map(nm).join(" or ")}<span class="q">?</span>`;
   return `${nm(r.teams[0])} vs. ${nm(r.teams[1])}`;
@@ -157,7 +155,7 @@ function previousKey(n, oldKeys) {
 // ---------- render tree ----------
 function renderTree(animate = true) {
   const width = $("tree").parentElement.clientWidth;
-  const L = layout(buildFlow(picks), Math.max(width, 300));
+  const L = layout(buildFlow(picks, ORDERS[orderName]), Math.max(width, 300));
   current = L;
   selected = null;
   const dur = animate && !reduceMotion ? DUR * slow : 0;
@@ -229,13 +227,13 @@ function rowLabel(id, narrow) {
   const v = varById[id];
   if (v.kind === "ssa") return narrow
     ? `<tspan fill="${band("UCLA")}">UCLA</tspan>/<tspan fill="${band("IOWA")}">IA</tspan>`
-    : `SportSource: <tspan fill="${band("UCLA")}">UCLA</tspan> or <tspan fill="${band("IOWA")}">Iowa</tspan>`;
+    : `<tspan fill="${band("UCLA")}">UCLA</tspan> <tspan class="at">or</tspan> <tspan fill="${band("IOWA")}">Iowa</tspan>`;
   const g = v.game, a = narrow ? g.away : T(g.away).short, h = narrow ? g.home : T(g.home).short;
   return `<tspan fill="${band(g.away)}">${a}</tspan> <tspan class="at">at</tspan> <tspan fill="${band(g.home)}">${h}</tspan>`;
 }
 function rowSub(id, narrow) {
   const v = varById[id];
-  if (v.kind === "ssa") return narrow ? "tiebreak" : "ranking tiebreaker";
+  if (v.kind === "ssa") return narrow ? "tiebreak" : "SportSource tiebreaker";
   return narrow ? `${v.game.day.split(" ")[0]} ${v.game.time.replace(":00", "").replace(" ", "")}` : `${v.game.day} · ${v.game.time} · ${v.game.tv}`;
 }
 
@@ -466,12 +464,27 @@ document.addEventListener("click", (e) => {
     slow = e.altKey ? 6 : 1;
     return setPicks({ ...picks, ...selected.cond });
   }
+  const ord = e.target.closest("[data-order]");
+  if (ord) {
+    if (ord.dataset.order === orderName) return;
+    slow = e.altKey ? 6 : 1;
+    setOrder(ord.dataset.order);
+    writeHash();
+    renderAll(true);
+    slow = 1;
+    return;
+  }
   if (e.target.closest("#reset")) { slow = e.altKey ? 6 : 1; return setPicks({}); }
 });
 
 let rt;
 addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => renderAll(false), 120); });
 
+function setOrder(name) {
+  orderName = ORDERS[name] ? name : "decisive";
+  orderIds = ORDERS[orderName].map((i) => VARS[i].id);
+  document.querySelectorAll("[data-order]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.order === orderName));
+}
 function readHash() {
   const out = {};
   const m = location.hash.match(/p=([^&]*)/);
@@ -483,9 +496,11 @@ function readHash() {
 }
 function writeHash() {
   const s = orderIds.filter((k) => k in picks).map((k) => `${k}:${picks[k]}`).join(",");
-  history.replaceState(null, "", s ? `#p=${s}` : location.pathname + location.search);
+  const parts = [s && `p=${s}`, orderName !== "decisive" && `o=${orderName}`].filter(Boolean);
+  history.replaceState(null, "", parts.length ? `#${parts.join("&")}` : location.pathname + location.search);
 }
 
+setOrder((location.hash.match(/o=(\w+)/) || [])[1]);
 picks = readHash();
 prevPicks = { ...picks };
 renderAll(false);

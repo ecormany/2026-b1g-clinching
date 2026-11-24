@@ -93,7 +93,7 @@ function condEntropy(idxs) {
   }
   return h;
 }
-export const ORDER = (() => {
+export const DECISIVE_ORDER = (() => {
   const order = [];
   while (order.length < VARS.length) {
     let best = null;
@@ -107,21 +107,39 @@ export const ORDER = (() => {
   return order; // indices into VARS
 })();
 
+// Kickoff order (the SportSource tiebreaker, not a game, goes last).
+function kickoff(g) {
+  const [, md] = g.day.split(" ");
+  const [hm, ap] = g.time.split(" ");
+  let [h, m] = hm.split(":").map(Number);
+  if (ap === "PM" && h !== 12) h += 12;
+  return md + String(h).padStart(2, "0") + String(m).padStart(2, "0");
+}
+export const TIME_ORDER = VARS.map((v, i) => i).sort((a, b) => {
+  const va = VARS[a], vb = VARS[b];
+  if (!va.game || !vb.game) return !va.game - !vb.game;
+  return kickoff(va.game).localeCompare(kickoff(vb.game)) || a - b;
+});
+export const ORDERS = { decisive: DECISIVE_ORDER, time: TIME_ORDER };
+export const ORDER = DECISIVE_ORDER;
+
 // Does flipping game i change the matchup anywhere in this set of outcomes?
 function relevant(outcomes, i) {
   return outcomes.some((o) => RESULT[o].key !== RESULT[o ^ (1 << i)].key);
 }
 
-const condKey = (cond) =>
-  ORDER.map((i) => VARS[i].id).filter((id) => id in cond).map((id) => `${id}:${cond[id]}`).join("|") || "root";
+// Canonical key for a set of conditions (independent of tree order, so the
+// same branch keeps its identity when the order changes).
+export const condKey = (cond) =>
+  VARS.map((v) => v.id).filter((id) => id in cond).map((id) => `${id}:${cond[id]}`).join("|") || "root";
 
-// Binary tree in ORDER. A game that can't change the result inside a branch is
+// Binary tree in the given game order. A game that can't change the result inside a branch is
 // skipped there (the band passes straight through). A branch stops as soon as
 // the matchup is decided.
-export function buildFlow(picks) {
-  return grow(filterOutcomes(picks), { ...picks }, 0, null);
+export function buildFlow(picks, order = DECISIVE_ORDER) {
+  return grow(filterOutcomes(picks), { ...picks }, 0, null, order);
 }
-function grow(outcomes, cond, k, parent) {
+function grow(outcomes, cond, k, parent, ORDER) {
   const n = { key: condKey(cond), cond, outcomes, parent };
   if (new Set(outcomes.map(resultKey)).size === 1) {
     n.leaf = true;
@@ -132,7 +150,7 @@ function grow(outcomes, cond, k, parent) {
   const i = ORDER[k];
   n.varId = VARS[i].id;
   n.children = VARS[i].options.map((val, b) =>
-    grow(outcomes.filter((o) => ((o >> i) & 1) === b), { ...cond, [VARS[i].id]: val }, k + 1, n));
+    grow(outcomes.filter((o) => ((o >> i) & 1) === b), { ...cond, [VARS[i].id]: val }, k + 1, n, ORDER));
   n.children.forEach((c, b) => (c.value = VARS[i].options[b]));
   return n;
 }
