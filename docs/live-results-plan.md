@@ -66,7 +66,7 @@ view     = "live" | "pre"             // hash param v=
 ### What "as it stands" shows
 - **Headline:** "If every game ended now: **A vs. B**". This is the leaf you reach by treating every current leader as the winner. Tied games count as undecided, so the line may read "A vs. B or C". Once enough games are final to settle it, switch to the existing "Title game set" card.
 - **Tree:** finals prune it the same way picks do today. In-progress games are not pruned. Instead, the "ended now" path is highlighted with the same ribbon style `drawRibbons` uses for a focused team, so the tree shows how close it is to changing. If the user has focused a team, that highlight comes first.
-- **Team cards:** chances use live win chances. `weight()` takes a per-game chance array instead of the fixed `VAR_PROB`: 1 or 0 for finals, `pHome` for live games, pregame spread for games not yet started. Each card gets a small ▲/▼ for the change since kickoff of the first game.
+- **Team cards:** chances use live win chances. `weight()` takes a per-game chance array instead of the fixed `VAR_PROB`: 1 or 0 for finals, `pHome` for live games, pregame spread for games not yet started. (A ▲/▼ change-since-kickoff marker was tried and dropped on Nov. 24: it read as confusing.)
 - **Game buttons** (`renderGames`): the score goes in each team's button, with a status line in place of the time and TV text ("Q3 4:12 · CBS", "Halftime", "FINAL"). The leader gets a tint. Finals use a locked style and can't be clicked in live view. Live games stay clickable for "what if".
 
 ### Switching views

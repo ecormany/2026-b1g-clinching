@@ -1,6 +1,6 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { TEAMS, SCENARIOS, GAMES } from "./data.js";
-import { VARS, CONTENDERS, ORDERS, VAR_PROB, valueOf, condKey, weight, buildFlow, matchedScenarios, liveProbs, chances, filterOutcomes, RESULT } from "./engine.js";
+import { VARS, CONTENDERS, ORDERS, VAR_PROB, valueOf, condKey, weight, buildFlow, matchedScenarios, liveProbs, filterOutcomes, RESULT } from "./engine.js";
 import { startLive } from "./live.js";
 
 // ---------- constants ----------
@@ -496,9 +496,6 @@ function renderTeams(animate = true) {
   })(current.root);
   if (focusTeam && !possible.has(focusTeam)) focusTeam = null;
   const order = [...CONTENDERS].sort((a, b) => pin[b] - pin[a] || pmaybe[b] - pmaybe[a]);
-  // Baseline for ▲/▼: pregame lines with the user's picks, minus games now final.
-  const res = results();
-  const base = isLive() ? chances(Object.fromEntries(Object.entries(picks).filter(([k]) => !(k in res)))) : null;
   const dur = animate && !reduceMotion ? DUR * slow : 0;
   const box = $("teams");
   const before = new Map();
@@ -512,7 +509,7 @@ function renderTeams(animate = true) {
       el.className = "team";
       el.dataset.team = t;
       el.style.cssText = `--c:${T(t).color};--i:${ink(t)}`;
-      el.innerHTML = `<span class="tname">${T(t).name}</span><span class="tval"><span class="num"></span><small></small><i class="tdelta"></i></span><span class="tbar"><span></span></span>`;
+      el.innerHTML = `<span class="tname">${T(t).name}</span><span class="tval"><span class="num"></span><small></small></span><span class="tbar"><span></span></span>`;
       teamEls.set(t, el);
     }
     box.appendChild(el); // moves it into sorted position
@@ -533,10 +530,6 @@ function renderTeams(animate = true) {
     small.title = maybe ? "Chance of an outcome the league's text leaves unresolved" : "";
     const final = status === "in" ? "In" : status === "out" ? "Out" : pct(pin[t]);
     countTo(el, teamVal.has(t) ? teamVal.get(t) : pin[t], pin[t], final, dur);
-    const dEl = el.querySelector(".tdelta"), d = base ? Math.round((pin[t] - base[t]) * 100) : 0;
-    dEl.textContent = status === "alive" && d ? `${d > 0 ? "▲" : "▼"}${Math.abs(d)}` : "";
-    dEl.className = "tdelta " + (d > 0 ? "up" : "down");
-    dEl.title = d ? "Change since kickoff (with your picks)" : "";
     teamVal.set(t, pin[t]);
   }
 

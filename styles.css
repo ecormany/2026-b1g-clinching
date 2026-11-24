@@ -80,8 +80,6 @@ h1 { margin: 0; font-size: clamp(28px, 4.6vw, 48px); line-height: 1.02; font-wei
 /* ---------- live ---------- */
 .livebar[hidden] { display: none; }
 .livebar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: -8px 0 20px; }
-.livebar .seg { background: #fff; border: 1px solid var(--line); }
-.livebar .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
 .livebar .seg button:disabled { opacity: .4; cursor: default; }
 .livestat { margin: 0; font-size: 13px; font-weight: 600; }
 .livestat .warn, .warn { color: #b0461a; font-weight: 700; }
@@ -97,19 +95,16 @@ h1 { margin: 0; font-size: clamp(28px, 4.6vw, 48px); line-height: 1.02; font-wei
 .opt.on .sc { color: var(--i); opacity: 1; }
 .opt.lead { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
 .ball { display: inline-block; width: 7px; height: 5px; margin-left: 4px; vertical-align: 1px; border-radius: 50%; background: #8b5a2b; }
-.tdelta { font-style: normal; font-size: 11px; font-weight: 800; margin-left: 5px; letter-spacing: 0; vertical-align: 3px; }
-.tdelta.up { color: #1d8a4a; }
-.tdelta.down { color: #c0392b; }
-.team.in .tdelta { display: none; }
 
 /* ---------- tree ---------- */
 .treebox { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 16px 12px 4px; }
 .treehead { display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin: 0 8px 10px; flex-wrap: wrap; }
 .treehead-label { font-size: 14px; font-weight: 700; color: var(--muted); }
-.seg { display: inline-flex; padding: 3px; background: var(--soft); border-radius: 999px; }
-.seg button { border: 0; background: transparent; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700; color: var(--muted); transition: background .25s var(--ease), color .25s, box-shadow .25s; }
-.seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-.seg button:not([aria-pressed="true"]):hover { color: var(--ink); }
+/* Segmented toggles (view, game order): Big Ten blue track, solid blue pick. */
+.seg { display: inline-flex; padding: 3px; background: color-mix(in srgb, var(--accent) 9%, white); border: 1px solid color-mix(in srgb, var(--accent) 18%, white); border-radius: 999px; }
+.seg button { border: 0; background: transparent; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700; color: color-mix(in srgb, var(--accent) 70%, black); transition: background .25s var(--ease), color .25s, box-shadow .25s; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 40%, transparent); }
+.seg button:not([aria-pressed="true"]):not(:disabled):hover { background: color-mix(in srgb, var(--accent) 16%, white); }
 .sentence { min-height: 48px; margin: 0 8px 6px; font-size: 17px; line-height: 1.4; font-weight: 500; }
 .sentence .muted, .muted { color: var(--muted); font-weight: 500; }
 .sentence b { font-weight: 800; }
