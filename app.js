@@ -559,7 +559,9 @@ document.addEventListener("click", (e) => {
   if (team) {
     focusTeam = focusTeam === team.dataset.team ? null : team.dataset.team;
     selected = null;
-    return applyHighlight();
+    applyHighlight();
+    if (focusTeam) revealTree();
+    return;
   }
   if (e.target.closest("#lockin") && selected) {
     slow = e.altKey ? 6 : 1;
@@ -577,6 +579,14 @@ document.addEventListener("click", (e) => {
   }
   if (e.target.closest("#reset")) { slow = e.altKey ? 6 : 1; return setPicks({}); }
 });
+
+// On small screens the tree sits well below the team cards. When a team is
+// picked and the top of the tree pane isn't (meaningfully) on screen, bring it up.
+function revealTree() {
+  const box = document.querySelector(".treebox").getBoundingClientRect();
+  if (box.top >= 0 && box.top <= innerHeight - 160) return;
+  scrollTo({ top: scrollY + box.top - 12, behavior: reduceMotion ? "auto" : "smooth" });
+}
 
 let rt;
 addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => renderAll(false), 120); });
