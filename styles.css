@@ -92,8 +92,14 @@ h1 { margin: 0; font-size: clamp(28px, 4.6vw, 48px); line-height: 1.02; font-wei
 
 .band, .leaf { cursor: pointer; }
 .band { transition: opacity .3s; }
-.lockin { margin-left: 6px; border: 0; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; vertical-align: 2px; animation: rise .3s var(--ease); transition: transform .2s var(--ease); }
-.lockin:hover { transform: translateY(-1px); }
+.lockin {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; vertical-align: 1px;
+  border: 1.5px solid color-mix(in srgb, var(--c) 30%, white); background: color-mix(in srgb, var(--c) 10%, white);
+  color: color-mix(in srgb, var(--c) 75%, black); font-size: 13px; font-weight: 700; padding: 4px 12px 4px 10px; border-radius: 999px;
+  animation: rise .3s var(--ease); transition: background .2s, border-color .2s, transform .2s var(--ease), box-shadow .2s;
+}
+.lockin:hover { background: color-mix(in srgb, var(--c) 18%, white); border-color: color-mix(in srgb, var(--c) 50%, white); transform: translateY(-1px); box-shadow: 0 4px 12px -6px color-mix(in srgb, var(--c) 60%, transparent); }
+.lockin:active { transform: scale(.97); }
 .band.dim { opacity: .12 !important; }
 .band.under { opacity: .16 !important; }
 .ribbon { pointer-events: none; animation: fadein .45s var(--ease); }

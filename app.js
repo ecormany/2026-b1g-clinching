@@ -395,7 +395,7 @@ function sentence() {
   }
   const conds = orderIds.filter((id) => id in n.cond && !(id in picks)).map((id) => phrase(id, n.cond[id]));
   const lead = conds.length ? `If ${listJoin(conds)}` : Object.keys(picks).length ? "With your picks" : "Before any games are played";
-  const lock = conds.length ? ` <button type="button" class="lockin" id="lockin">Lock in ${conds.length === 1 ? "this result" : "these results"}</button>` : "";
+  const lock = conds.length ? ` <button type="button" class="lockin" id="lockin" style="--c:${n.g.color}"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 3h12l-4.6 5.4V13l-2.8-1.4V8.4z" fill="currentColor"/></svg>Show only this branch</button>` : "";
   el.innerHTML = n.leaf
     ? `${lead}, it's ${matchupHTML(n.result)}. <span class="chance">${pct(n.p)}</span>${lock}`
     : `${lead}, it's still open. <span class="muted">Possible:</span> ${topMatchups(n, 3)}${lock}`;
