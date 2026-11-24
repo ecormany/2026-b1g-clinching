@@ -23,7 +23,7 @@ h1 { margin: 0; font-size: clamp(28px, 4.6vw, 48px); line-height: 1.02; font-wei
 .label { margin: 0 0 8px; font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
 
 /* ---------- team strip ---------- */
-.teams { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 0 0 24px; }
+.teams { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 0 0 24px; }
 .team { display: grid; gap: 2px; text-align: left; padding: 10px 12px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--line); transition: background .4s, opacity .4s, color .4s, transform .25s var(--ease), box-shadow .25s var(--ease); }
 .team:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 8px 20px -12px rgba(0,0,0,.3); }
 .team:disabled { cursor: default; }
@@ -43,7 +43,10 @@ h1 { margin: 0; font-size: clamp(28px, 4.6vw, 48px); line-height: 1.02; font-wei
 
 /* ---------- game pickers ---------- */
 .controls { margin-bottom: 18px; }
-.games { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.games { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+/* Cards never size to their content: picking results adds or removes the
+   "doesn't matter now" note, and that must not change any column width. */
+.game, .team { min-width: 0; }
 .game { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px 6px 7px; transition: opacity .3s, border-color .3s; }
 .game.picked { border-color: #cfc9bc; }
 .game.idle { opacity: .45; }
@@ -146,18 +149,19 @@ h1 { margin: 0; font-size: clamp(28px, 4.6vw, 48px); line-height: 1.02; font-wei
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
 @media (max-width: 1000px) {
-  .games { grid-template-columns: repeat(4, 1fr); }
+  .games { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 760px) {
-  .teams { grid-template-columns: repeat(3, 1fr); }
-  .games { grid-template-columns: repeat(2, 1fr); }
+  .teams { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
   .wrap { padding: 0 12px; }
-  .teams, .games { grid-template-columns: repeat(2, 1fr); }
+  .teams, .games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tval { font-size: 22px; }
   .sentence { font-size: 15px; }
   .reset { margin-left: 0; }
+  .gmeta { white-space: normal; } /* wrap the note instead of cutting it off */
 }
 @media (max-width: 480px) {
   .opt .full { display: none; }
