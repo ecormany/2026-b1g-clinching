@@ -116,14 +116,15 @@ function layout(root, width) {
     n.g = { xa: left, xb: left + n.w, y0: P.y, cx: n.x, w: n.w, y1: n.y, ch: Math.min(ROW * 0.92, n.y - P.y), color: band(n.value) };
   }
 
-  // Labels: biggest end points first; skip any label that would collide.
-  const placed = [];
-  for (const l of [...leaves].sort((a, b) => b.p - a.p)) {
-    const wide = Math.max(l.w, 10) >= 64;
-    const box = wide ? { x0: l.x - 40, x1: l.x + 40, y0: l.y, y1: l.y + 40 } : { x0: l.x - 19, x1: l.x + 19, y0: l.y, y1: l.y + 52 };
-    l.wide = wide;
-    l.showLabel = !placed.some((b) => b.x0 < box.x1 && box.x0 < b.x1 && b.y0 < box.y1 && box.y0 < b.y1);
-    if (l.showLabel) placed.push(box);
+  // End-point caps: a split bar for wide bands; for thin ones, two stacked
+  // color squares sized to the room between neighbours at the same depth.
+  for (const l of leaves) {
+    l.bar = l.w >= 18;
+    if (l.bar) { l.capH = 7; continue; }
+    let room = 20;
+    for (const m of leaves) if (m !== l && Math.abs(m.y - l.y) < 30) room = Math.min(room, Math.abs(m.x - l.x));
+    l.sq = Math.max(4, Math.min(9, room - 3));
+    l.capH = l.sq * 2 + 1;
   }
   const height = d3.max(leaves, (l) => l.y + 60) + 8;
   return { root, nodes, leaves, rows, rowY, width, height, gutter, narrow };
@@ -218,6 +219,7 @@ function renderTree(animate = true) {
     .attr("transform", (d) => `translate(${d.x},${d.y})`);
   const lAll = lEnter.merge(lv).classed("dim", false);
   lAll.each(function (d) { drawLeaf(d3.select(this), d); });
+  placeLabels(L, lAll);
   lAll.transition(t).delay(dur ? dur * 0.25 : 0).style("opacity", 1).attr("transform", (d) => `translate(${d.x},${d.y})`);
 
   prevPicks = { ...picks };
@@ -240,25 +242,69 @@ function rowSub(id, narrow) {
 function drawLeaf(sel, d) {
   sel.selectAll("*").remove();
   const res = d.result, a = res.teams[0];
-  const bw = Math.max(d.w, 10);
-  // two-tone cap: the matchup's colors
-  sel.append("rect").attr("x", -bw / 2).attr("y", 0).attr("width", bw / 2).attr("height", 7).attr("fill", band(a));
-  sel.append("rect").attr("x", 0).attr("y", 0).attr("width", bw / 2).attr("height", 7)
-    .attr("fill", res.gap ? "url(#hatch)" : band(res.teams[1]));
-  const txt = sel.append("text").attr("class", "ltxt" + (d.showLabel ? "" : " hidden")).attr("y", 20);
+  const bFill = res.gap ? "url(#hatch)" : band(res.teams[1]);
+  // matchup cap
+  if (d.bar) {
+    const bw = d.w;
+    sel.append("rect").attr("x", -bw / 2).attr("y", 0).attr("width", bw / 2).attr("height", 7).attr("fill", band(a));
+    sel.append("rect").attr("x", 0).attr("y", 0).attr("width", bw / 2).attr("height", 7).attr("fill", bFill);
+  } else {
+    const q = d.sq;
+    sel.append("rect").attr("class", "sq").attr("x", -q / 2).attr("y", 0).attr("width", q).attr("height", q).attr("rx", 1).attr("fill", band(a));
+    sel.append("rect").attr("class", "sq").attr("x", -q / 2).attr("y", q + 1).attr("width", q).attr("height", q).attr("rx", 1).attr("fill", bFill);
+  }
+  // Two label layouts; placeLabels() keeps whichever fits, or neither.
   const second = res.gap ? res.gap.candidates.map((c) => ABBR[c]).join("/") + "?" : ABBR[res.teams[1]];
   const secondFill = res.gap ? "#8a857a" : band(res.teams[1]);
-  if (d.wide) {
-    txt.append("tspan").attr("x", 0).attr("fill", band(a)).text(ABBR[a]);
-    txt.append("tspan").attr("class", "vs").text(" vs ");
-    txt.append("tspan").attr("fill", secondFill).text(second);
-    txt.append("tspan").attr("x", 0).attr("dy", 14).attr("class", "lp").text(pct(d.p));
-  } else {
-    txt.append("tspan").attr("x", 0).attr("fill", band(a)).text(ABBR[a]);
-    (res.gap ? res.gap.candidates.map((c) => ABBR[c] + "?") : [ABBR[res.teams[1]]])
-      .forEach((t) => txt.append("tspan").attr("x", 0).attr("dy", 11).attr("fill", secondFill).text(t));
-    txt.append("tspan").attr("x", 0).attr("dy", 12).attr("class", "lp").text(pct(d.p));
+  const y = d.capH + 11;
+  const one = sel.append("text").attr("class", "ltxt one").attr("y", y);
+  one.append("tspan").attr("x", 0).attr("fill", band(a)).text(ABBR[a]);
+  one.append("tspan").attr("class", "vs").text(" vs ");
+  one.append("tspan").attr("fill", secondFill).text(second);
+  one.append("tspan").attr("x", 0).attr("dy", 13).attr("class", "lp").text(pct(d.p));
+  const stack = sel.append("text").attr("class", "ltxt stack").attr("y", y);
+  stack.append("tspan").attr("x", 0).attr("fill", band(a)).text(ABBR[a]);
+  (res.gap ? res.gap.candidates.map((c) => ABBR[c] + "?") : [ABBR[res.teams[1]]])
+    .forEach((t) => stack.append("tspan").attr("x", 0).attr("dy", 11).attr("fill", secondFill).text(t));
+  stack.append("tspan").attr("x", 0).attr("dy", 12).attr("class", "lp").text(pct(d.p));
+}
+
+// Measure every label and keep it only if it clears the other labels, the
+// end-point caps and the bands; biggest end points get first claim. Labels
+// that don't fit collapse away, leaving the color squares.
+function placeLabels(L, sel) {
+  const pad = 2;
+  const hit = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+  const blocks = [];
+  for (const n of L.nodes) {
+    if (!n.parent) continue;
+    const g = n.g, w = Math.max(g.w, 1.4), mid = g.y0 + g.ch / 2;
+    blocks.push({ x0: Math.min(g.xa, g.xb - 1.4), x1: Math.max(g.xb, g.xa + 1.4), y0: g.y0, y1: mid, own: n });
+    blocks.push({ x0: g.cx - w / 2, x1: g.cx + w / 2, y0: mid, y1: g.y1, own: n });
   }
+  for (const l of L.leaves) {
+    const hw = l.bar ? l.w / 2 : l.sq / 2;
+    blocks.push({ x0: l.x - hw, x1: l.x + hw, y0: l.y, y1: l.y + l.capH, own: l });
+  }
+  const els = new Map();
+  sel.each(function (d) { els.set(d, this); });
+  svg.classed("measuring", true); // hidden text has no size, so show it all briefly
+  const order = [...L.leaves].sort((a, b) => b.p - a.p);
+  for (const l of order) {
+    const g = d3.select(els.get(l));
+    const variants = ["one", "stack"].map((k) => {
+      const node = g.select(".ltxt." + k).node();
+      const bb = node.getBBox();
+      return { k, box: { x0: l.x + bb.x - pad, x1: l.x + bb.x + bb.width + pad, y0: l.y + bb.y - 1, y1: l.y + bb.y + bb.height } };
+    });
+    const fits = (b) => b.x0 >= L.gutter - 2 && b.x1 <= L.width - 2 && !blocks.some((o) => o.own !== l && hit(b, o));
+    const pick = variants.find((v) => fits(v.box));
+    l.label = pick ? pick.k : null;
+    if (pick) blocks.push({ ...pick.box, own: l });
+    g.classed("collapsed", !pick);
+    g.selectAll(".ltxt").classed("show", function () { return !!pick && this.classList.contains(pick.k); });
+  }
+  svg.classed("measuring", false);
 }
 
 // ---------- hover + click ----------
@@ -296,6 +342,7 @@ function applyHighlight() {
   gBands.selectAll("path.band").classed("dim", (d) => !!on && !on.has(d.key) && !ribbons).classed("under", !!ribbons).classed("hot", (d) => d === selected);
   drawRibbons(ribbons ? focusTeam : null);
   gLeaves.selectAll("g.leaf").classed("dim", (d) => !!on && !on.has(d.key)).classed("focus", (d) => d === selected);
+  gLeaves.selectAll("g.leaf").filter((d) => d === selected).raise();
   document.querySelectorAll(".team[data-team]").forEach((el) => el.classList.toggle("focused", el.dataset.team === focusTeam));
   document.body.classList.toggle("team-focus", !!focusTeam && !selected);
   sentence();

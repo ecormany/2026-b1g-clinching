@@ -102,10 +102,12 @@ h1 { margin: 0; font-size: clamp(40px, 7vw, 72px); line-height: .95; font-weight
 .leaf { transition: opacity .25s; }
 .leaf.dim { opacity: .2 !important; }
 .ltxt { font-size: 10.5px; font-weight: 800; text-anchor: middle; letter-spacing: .02em; }
-.ltxt { transition: opacity .2s; }
-.ltxt.hidden { opacity: 0; }
-.leaf.focus .ltxt { opacity: 1; }
-.leaf.focus { paint-order: stroke; }
+.ltxt { display: none; animation: fadein .3s var(--ease); }
+.ltxt.show { display: inline; }
+#tree.measuring .ltxt { display: inline; }
+/* a tapped end point always shows its label, haloed over whatever is nearby */
+.leaf.focus.collapsed .ltxt.stack { display: inline; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+.leaf.focus .sq { stroke: var(--ink); stroke-width: 1; }
 .ltxt .vs { fill: var(--muted); font-weight: 600; }
 .ltxt .lp { fill: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 .guide { stroke: var(--line); stroke-dasharray: 2 4; }
