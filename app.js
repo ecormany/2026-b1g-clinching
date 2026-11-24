@@ -499,7 +499,10 @@ function renderGames() {
     const idle = !picked && !live.has(id);
     const meta = v.kind === "ssa" ? "Tiebreaker" : `${v.game.day.split(" ")[0]} ${v.game.time} · ${v.game.tv}`;
     const btns = v.options.map((t, i) => {
-      const label = v.kind === "ssa" ? `${T(t).short} higher` : T(t).short;
+      // full name, plus a short code swapped in on phones (see .opt .abbr)
+      const label = v.kind === "ssa"
+        ? `<span class="full">${T(t).short} higher</span><span class="abbr">${t} ↑</span>`
+        : `<span class="full">${T(t).short}</span><span class="abbr">${t}</span>`;
       const fav = v.kind === "game" && v.game.fav === t ? `<small>−${v.game.spread}</small>` : "";
       return `${i ? `<span class="at">${v.kind === "ssa" ? "or" : "@"}</span>` : ""}<button type="button" class="opt ${picked === t ? "on" : ""} ${picked && picked !== t ? "off" : ""}" data-var="${id}" data-val="${t}" style="--c:${band(t)};--i:${ink(t)}">${label}${fav}</button>`;
     }).join("");
