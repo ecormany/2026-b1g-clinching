@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- The tree in miniature: a trunk splitting into team-colored branches. -->
+  <rect x="1" y="1" width="62" height="62" rx="14" fill="#fff" stroke="#0088ce" stroke-width="2"/>
+  <rect x="16" y="9" width="34" height="8" fill="#0088ce"/>
+  <path d="M16 17H24C24 24.0 15 24.0 15 31H7C7 24.0 16 24.0 16 17Z" fill="#4b2e83"/>
+  <path d="M24 17H50C50 24.0 54 24.0 54 31H28C28 24.0 24 24.0 24 17Z" fill="#154733"/>
+  <path d="M28 31H46C46 37.5 42 37.5 42 44H24C24 37.5 28 37.5 28 31Z" fill="#990000"/>
+  <path d="M46 31H54C54 37.5 56 37.5 56 44H48C48 37.5 46 37.5 46 31Z" fill="#2d68c4"/>
+  <path d="M24 44H33C33 50.0 28 50.0 28 56H19C19 50.0 24 50.0 24 44Z" fill="#111111"/>
+  <path d="M33 44H42C42 50.0 44 50.0 44 56H35C35 50.0 33 50.0 33 44Z" fill="#990000"/>
+</svg>
